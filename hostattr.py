@@ -10,7 +10,7 @@ def getbasicinfo(host):
     base_url = "xxxxxx"
     ServeParameter = 'xxxxxxxx'
 
-    url = base_url + urllib.parse.quote(nodeServeParameter)
+    url = base_url + urllib.parse.quote(ServeParameter)
     #print(url)
     #print(urllib.parse.unquote(url))
 
