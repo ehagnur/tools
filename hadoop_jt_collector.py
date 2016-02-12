@@ -1,74 +1,47 @@
 #!/usr/bin/env python2.6
 __author__ = 'hsalih'
-
 """
 Collects heap usage and slot information for JobTracker
 """
-from HTMLParser import HTMLParser
-from xml.etree.ElementTree import fromstring
-import urllib2
 import re
+from bs4 import BeautifulSoup
+import urllib
 import time
-
-class JTPageParser(HTMLParser):
-    """Collects JT heap usage and slot usage"""
-
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.in_h2 = False
-        self.jt_heapused = ""
-        self.jt_heaptotal = ""
-        self.jt_heappercentage = ""
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'h2':
-            self.in_h2 = True
-
-    def handle_endtag(self, tag):
-        if tag == 'h2':
-            self.in_h2 = False
-
-    def handle_data(self, data):
-        """Extracts the heap usage"""
-        if self.in_h2 and re.match(r'Cluster', data):
-            self.jt_heapused = data.split()[5]
-            self.jt_heaptotal = data.split()[6].split('/')[1]
-            self.jt_heappercentage = (float(self.jt_heapused)/float(self.jt_heaptotal))*100
-
-    def printcollectorvalue(self):
-        """print all the collector values"""
-        print "{metrics} {tstamp} {value} ".format(metrics="mapred.jobtracker.resource.heap_used_real",tstamp=int(time.time()),value=float(self.jt_heapused))
-        print "{metrics} {tstamp} {value} ".format(metrics="mapred.jobtracker.resource.heap_total",tstamp=int(time.time()),value=float(self.jt_heaptotal))
-        print "{metrics} {tstamp} {value} ".format(metrics="mapred.jobtracker.resource.heap_used_percent",tstamp=int(time.time()),value=float(self.jt_heappercentage))
-
+import socket
 
 def main():
-    pageparser = JTPageParser()
-    jt_url = "{prefix}{hostname}{postfix}".format(prefix="http://", hostname="dwh-name1005.ve.box.net", postfix=":50030/jobtracker.jsp")
+    header_list = []
+    value_list = []
+    resource_dict = {}
+    hostname = socket.gethostname()
+    jt_url = "{prefix}{host}{postfix}".format(prefix="http://", host=hostname, postfix=":50030/jobtracker.jsp")
+    request = urllib.urlopen(jt_url).read()
+    soup = BeautifulSoup(request)
+    heap = soup.find_all("h2")
+    resource_dict["heap_used_real"] = heap[0].text.split()[5]
+    resource_dict["heap_total"] = heap[0].text.split()[6].split('/')[1]
+    resource_dict["heap_used_percentage"] = (float(heap[0].text.split()[5])/float(heap[0].text.split()[6].split('/')[1]))*100
+    slot_usage = soup.find_all("table")[0]
+    rows = slot_usage.findAll('tr')
 
-    try:
-        request = urllib2.urlopen(jt_url, timeout=10)
-    except:
-        pass
+    for tr in rows:
+        for th in tr.findAll("th"):
+            header_list.append(re.sub(r'\s|/|\.',"_",th.findNext(text=True)))
+        for td in tr.findAll("td"):
+            value_list.append(td.findNext(text=True))
 
-    f = request.read()
-    pageparser.feed(f)
+    for item in range(len(header_list)):
+            resource_dict[header_list[item]] = value_list[item]
 
-    tree = fromstring(f)
-    rows = tree.findall("tr")
-    headrow = rows[0]
-    datarows = rows[1]
+    for key in resource_dict:
+        printmetrics(key,resource_dict[key])
 
-    for num, h in enumerate(headrow):
-        data = ", ".join([row[num].text for row in datarows])
-        print "{0:<16}: {1}".format(h.text, data)
-
-    pageparser.printcollectorvalue()
-
+def printmetrics(name, value):
+    """print all the collector values"""
+    print "{metrics} {tstamp} {value} ".format(metrics="mapred.jobtracker.resource."+name,tstamp=int(time.time()),value=float(value))
 
 if __name__ == '__main__':
     try:
         main()
-    except Exception, err:
+    except:
         pass
-
