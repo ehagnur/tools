@@ -1,0 +1,13 @@
+This is a sample module I built as an example.
+BUILD:
+	1 Created the file nester.py and setup.py under nester directory
+	2 run python setup.py sdist
+INSTALL:
+	1 python setup.py install (may require sudo access)
+RUN:
+	1 import module or function from module
+	2 create a list/pass a list as an argument to print_lol
+EXAMPLE:
+from nester import print_lol
+my_list = ["test", "Heya", 1985]
+print_lol(my_list)
