@@ -1,10 +1,11 @@
-__author__ = 'hsalih'
+#!/usr/bin/python
+__author__ = 'ehagnur'
 
 from datetime import datetime
 import os, os.path
 import glob
 
-log_root = "/var/log/tomcat6/"
+log_root = ""
 log_prefix_list = ["catalina.", "localhost.", "host-manager.", "manager."]
 now = datetime.now()
 for log_prefix in log_prefix_list:
